@@ -260,7 +260,8 @@ class RestRouterAPI(app_manager.RyuApp):
                        requirements=requirements,
                        action='delete_vlan_data',
                        conditions=dict(method=['DELETE']))
-        #hub.spawn(self.nfunc)
+        
+        
     @set_ev_cls(dpset.EventDP, dpset.DPSET_EV_DISPATCHER)
     def datapath_handler(self, ev):
         if ev.enter:
@@ -410,10 +411,21 @@ class RouterController(ControllerBase):
     def delete_vlan_data(self, req, switch_id, vlan_id, **_kwargs):
         return self._access_router(switch_id, vlan_id,
                                    'delete_data', req)
+        
 
     def _access_router(self, switch_id, vlan_id, func, req):
         rest_message = []
         routers = self._get_router(switch_id)
+        
+        if func == 'set_data':
+            ip = json.loads(req.body.decode('utf-8'))['address']
+            # the_router = routers[1]
+            
+            all = self._ROUTER_LIST
+            for router in all.values():
+                router.addAddress(switch_id, ip)
+                router.printAddress()
+        
         try:
             param = req.json if req.body else {}
         except ValueError:
@@ -436,27 +448,30 @@ class RouterController(ControllerBase):
                 routers = {sw_id: self._ROUTER_LIST[sw_id]}
 
         if routers:
+            print(routers)
             return routers
         else:
             raise NotFoundError(switch_id=switch_id)
 
 
 class Router(dict):
-
-    def myfunc(self):
-        self.logger.info("New thread",extra=self.sw_id)
-        if not self[VLANID_NONE]._get_address_data():
-            self.logger.info("No IP address by now", extra=self.sw_id)
-        else:
-            pass
-    #111 
-
+    
+    
+    def addAddress(self, switch_id, ip_address):
+        self.addressList[switch_id] = ip_address                 
+    
+    def printAddress(self):
+        print(self.addressList)
+        
     def __init__(self, dp, logger):
-        #super(Router, self).__init__()
+        print('Router init.')
+        super(Router, self).__init__()
         self.dp = dp
         self.dpid_str = dpid_lib.dpid_to_str(dp.id)
         self.sw_id = {'sw_id': self.dpid_str}
         self.logger = logger
+        
+        self.addressList = {}
 
         self.port_data = PortData(dp.ports)
 
@@ -486,8 +501,6 @@ class Router(dict):
         self.thread = hub.spawn(self._cyclic_update_routing_tbl)
         self.logger.info('Start cyclic routing table update.',
                          extra=self.sw_id)
-        
-        hub.spawn(self.myfunc)
 
     def delete(self):
         hub.kill(self.thread)
@@ -609,6 +622,7 @@ class Router(dict):
 
 
 class VlanRouter(object):
+    
     def __init__(self, vlan_id, dp, port_data, logger):
         super(VlanRouter, self).__init__()
         self.vlan_id = vlan_id
