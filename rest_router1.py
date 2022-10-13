@@ -449,7 +449,7 @@ class Router(dict):
             self.logger.info("No IP address by now", extra=self.sw_id)
         else:
             pass
-
+    #111 
 
     def __init__(self, dp, logger):
         #super(Router, self).__init__()
