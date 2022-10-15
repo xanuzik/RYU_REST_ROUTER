@@ -422,9 +422,11 @@ class RouterController(ControllerBase):
             # the_router = routers[1]
             
             all = self._ROUTER_LIST
+            print(f"HAN {switch_id}")
             for router in all.values():
                 router.addAddress(switch_id, ip)
                 router.printAddress()
+                router.printSelfInfo(switch_id)
         
         try:
             param = req.json if req.body else {}
@@ -462,6 +464,21 @@ class Router(dict):
     
     def printAddress(self):
         print(self.addressList)
+    
+        
+    def printSelfInfo(self, switch_id):
+        if not self.addressList:
+            pass
+        else:
+            for id_before_format in self.addressList.keys():
+                if switch_id == id_before_format:
+                    id_after_format = id_before_format[15]
+                    ip_before_format = self.addressList[id_before_format]
+                    ip_after_format = ip_before_format.split('/',1)[0]
+                else:
+                    pass
+        id_ip_tuple = [ip_after_format, id_after_format]
+        print(f"tuple of {switch_id} is \n {id_ip_tuple}")
         
     def __init__(self, dp, logger):
         print('Router init.')
