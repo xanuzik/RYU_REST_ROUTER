@@ -412,6 +412,7 @@ class RouterController(ControllerBase):
         return self._access_router(switch_id, vlan_id,
                                    'delete_data', req)
         
+#CHANGED BY KAN
 
     def _access_router(self, switch_id, vlan_id, func, req):
         rest_message = []
@@ -422,11 +423,12 @@ class RouterController(ControllerBase):
             # the_router = routers[1]
             
             all = self._ROUTER_LIST
-            print(f"HAN {switch_id}")
+            print(f"KAN {switch_id}")
             for router in all.values():
                 router.addAddress(switch_id, ip)
                 router.printAddress()
                 router.printSelfInfo(switch_id)
+                print(router.inboundSocket(switch_id))
         
         try:
             param = req.json if req.body else {}
@@ -457,7 +459,8 @@ class RouterController(ControllerBase):
 
 
 class Router(dict):
-    
+
+#CHANGED BY KAN    
     
     def addAddress(self, switch_id, ip_address):
         self.addressList[switch_id] = ip_address                 
@@ -479,6 +482,18 @@ class Router(dict):
                     pass
         id_ip_tuple = [ip_after_format, id_after_format]
         print(f"tuple of {switch_id} is \n {id_ip_tuple}")
+    
+    def inboundSocket(self, switch_id):
+        if len(self.addressList) < 3:
+            pass
+        else:
+            ip_before_format = self.addressList[switch_id]
+            ip_after_format = ip_before_format.split('/',1)[0]
+            id_after_format = switch_id[15]
+            inbound_port = 10000 + int(id_after_format)
+            socket_tuple = (str(ip_after_format), inbound_port)
+        return socket_tuple
+
         
     def __init__(self, dp, logger):
         print('Router init.')
