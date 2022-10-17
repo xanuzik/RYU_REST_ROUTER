@@ -419,16 +419,33 @@ class RouterController(ControllerBase):
         routers = self._get_router(switch_id)
         
         if func == 'set_data':
-            ip = json.loads(req.body.decode('utf-8'))['address']
-            # the_router = routers[1]
             
-            all = self._ROUTER_LIST
-            print(f"KAN {switch_id}")
-            for router in all.values():
-                router.addAddress(switch_id, ip)
-                router.printAddress()
-                router.printSelfInfo(switch_id)
-                print(router.inboundSocket(switch_id))
+            if not json.loads(req.body.decode('utf-8'))['address']:
+                pass
+            else:
+                ip = json.loads(req.body.decode('utf-8'))['address']
+                print(json.loads(req.body.decode('utf-8')))
+                # the_router = routers[1]
+                
+                all = self._ROUTER_LIST
+                print(all)
+                print(f"KAN {switch_id}")
+                print(len(all))
+
+                for router in all.values():
+                    if len(router.printAddress()) < 3:
+                        print(router)
+                        router.addAddress(switch_id, ip)
+                        router.printAddress()
+                        router.printSelfInfo(switch_id)
+                        # para_tuple = router.inboundSocket(switch_id)
+                        # print(para_tuple)
+                        #router.create_inboundSocket(para_tuple)
+                para_tuple = router.inboundSocket(switch_id)
+                router.create_inboundSocket(para_tuple)
+                print(para_tuple)
+            
+            
         
         try:
             param = req.json if req.body else {}
@@ -467,6 +484,8 @@ class Router(dict):
     
     def printAddress(self):
         print(self.addressList)
+        return self.addressList
+    
     
         
     def printSelfInfo(self, switch_id):
@@ -484,15 +503,22 @@ class Router(dict):
         print(f"tuple of {switch_id} is \n {id_ip_tuple}")
     
     def inboundSocket(self, switch_id):
-        if len(self.addressList) < 3:
+        #print(len(self.addressList))
+        if not self.addressList[switch_id]:
             pass
         else:
             ip_before_format = self.addressList[switch_id]
             ip_after_format = ip_before_format.split('/',1)[0]
             id_after_format = switch_id[15]
             inbound_port = 10000 + int(id_after_format)
-            socket_tuple = (str(ip_after_format), inbound_port)
-        return socket_tuple
+            self.inbound_tuple = ('0.0.0.0', inbound_port)
+            return self.inbound_tuple
+    
+    def create_inboundSocket(self):
+        inbound_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        inbound_conn.bind(self.inbound_tuple)
+        inbound_conn.listen()
+        print(inbound_conn)
 
         
     def __init__(self, dp, logger):
@@ -504,6 +530,7 @@ class Router(dict):
         self.logger = logger
         
         self.addressList = {}
+        self.inbound_tuple = ()
 
         self.port_data = PortData(dp.ports)
 
