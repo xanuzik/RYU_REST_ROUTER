@@ -208,16 +208,16 @@ class CommandFailure(RyuException):
 
 
 class RestRouterAPI(app_manager.RyuApp):
-
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION,
                     ofproto_v1_2.OFP_VERSION,
                     ofproto_v1_3.OFP_VERSION]
 
     _CONTEXTS = {'dpset': dpset.DPSet,
                  'wsgi': WSGIApplication}
+
     def __init__(self, *args, **kwargs):
         super(RestRouterAPI, self).__init__(*args, **kwargs)
-        #hub.spawn(self.nfunc)
+        # hub.spawn(self.nfunc)
         # logger configure
         RouterController.set_logger(self.logger)
 
@@ -244,7 +244,6 @@ class RestRouterAPI(app_manager.RyuApp):
                        requirements=requirements,
                        action='delete_data',
                        conditions=dict(method=['DELETE']))
-        
 
         # For vlan data
         path = '/router/{switch_id}/{vlan_id}'
@@ -260,8 +259,7 @@ class RestRouterAPI(app_manager.RyuApp):
                        requirements=requirements,
                        action='delete_vlan_data',
                        conditions=dict(method=['DELETE']))
-        
-        
+
     @set_ev_cls(dpset.EventDP, dpset.DPSET_EV_DISPATCHER)
     def datapath_handler(self, ev):
         if ev.enter:
@@ -332,7 +330,6 @@ def rest_command(func):
 
 
 class RouterController(ControllerBase):
-
     _ROUTER_LIST = {}
     _LOGGER = None
 
@@ -411,56 +408,66 @@ class RouterController(ControllerBase):
     def delete_vlan_data(self, req, switch_id, vlan_id, **_kwargs):
         return self._access_router(switch_id, vlan_id,
                                    'delete_data', req)
-        
-#CHANGED BY KAN
+
+    # CHANGED BY KAN
 
     def _access_router(self, switch_id, vlan_id, func, req):
         rest_message = []
         routers = self._get_router(switch_id)
 
-        
-        
         if func == 'set_data':
-            
-            if len(self._ROUTER_LIST) < 3:
 
-                if not json.loads(req.body.decode('utf-8'))['address']:
-                    pass
-                else:
-                    ip = json.loads(req.body.decode('utf-8'))['address']
-                    print(json.loads(req.body.decode('utf-8')))
-                    # the_router = routers[1]
-                    
-                    all = self._ROUTER_LIST
-                    print(all)
-                    print(f"KAN {switch_id}")
-                    print(len(all))
-
-                    for router in all.values():
-                        if len(router.printAddress()) < 3:
-                            print(router)
-                            router.addAddress(switch_id, ip)
-                            router.printAddress()
-                            router.printSelfInfo(switch_id)
-                            # para_tuple = router.inboundSocket(switch_id)
-                            # print(para_tuple)
-                            #router.create_inboundSocket(para_tuple)
-            else: 
+            if 'address' not in json.loads(req.body.decode('utf-8')):
                 all = self._ROUTER_LIST
+                switch_index = switch_id[15]
+                index = int(switch_index)
+                spec_router = all[index]
+                spec_router.send_to_remote_socket(switch_id)
+            else:
+                ip = json.loads(req.body.decode('utf-8'))['address']
+                print(json.loads(req.body.decode('utf-8')))
+                # the_router = routers[1]
+                all = self._ROUTER_LIST
+
                 for router in all.values():
-                    para_tuple = router.inboundSocket(switch_id)
-                    print(para_tuple)
-                    router_inbound_socket =router.create_inboundSocket(para_tuple)
-                    print(router_inbound_socket)
+                    if len(router.printAddress()) < 3:
+                        print(router)
+                        router.addAddress(switch_id, ip)
+                        router.printAddress()
+                        router.printSelfInfo(switch_id)
+                        #router.addlisteningList(switch_id)
 
+                all = self._ROUTER_LIST
+                # print(all)
+                print(f"KAN {switch_id}")
+                switch_index = switch_id[15]
+                print(f'id is {switch_id}, type {type(switch_index)}')
+                index = int(switch_index)
 
-
-                para_tuple = router.inboundSocket(switch_id)
-                router.create_inboundSocket(para_tuple)
+                para_tuple = all[index].inboundSocket(switch_id)
                 print(para_tuple)
-            
-            
-        
+                router_inbound_socket = all[index].create_inboundSocket(para_tuple)
+                print(router_inbound_socket)
+                print(f"router {index} inbound socket created")
+
+
+
+
+                # para_tuple = router.inboundSocket(switch_id)
+                # print(para_tuple)
+                # router.create_inboundSocket(para_tuple)
+        # else: 
+        #     all = self._ROUTER_LIST
+        #     for router in all.values():
+        #         para_tuple = router.inboundSocket(switch_id)
+        #         print(para_tuple)
+        #         router_inbound_socket =router.create_inboundSocket(para_tuple)
+        #         print(router_inbound_socket)
+
+        # para_tuple = router.inboundSocket(switch_id)
+        # router.create_inboundSocket(para_tuple)
+        # print(para_tuple)
+
         try:
             param = req.json if req.body else {}
         except ValueError:
@@ -491,17 +498,18 @@ class RouterController(ControllerBase):
 
 class Router(dict):
 
-#CHANGED BY KAN    
-    
+    # CHANGED BY KAN
+
     def addAddress(self, switch_id, ip_address):
-        self.addressList[switch_id] = ip_address                 
-    
+        self.addressList[switch_id] = ip_address
+
+    def addlisteningList(self, switch_id, func_tuple):
+        self.listeningList[switch_id] = func_tuple
+
     def printAddress(self):
         print(self.addressList)
         return self.addressList
-    
-    
-        
+
     def printSelfInfo(self, switch_id):
         if not self.addressList:
             pass
@@ -510,31 +518,49 @@ class Router(dict):
                 if switch_id == id_before_format:
                     id_after_format = id_before_format[15]
                     ip_before_format = self.addressList[id_before_format]
-                    ip_after_format = ip_before_format.split('/',1)[0]
+                    ip_after_format = ip_before_format.split('/', 1)[0]
                 else:
                     pass
         id_ip_tuple = [ip_after_format, id_after_format]
         print(f"tuple of {switch_id} is \n {id_ip_tuple}")
-    
+
     def inboundSocket(self, switch_id):
-        #print(len(self.addressList))
+        # print(len(self.addressList))
         if not self.addressList[switch_id]:
             pass
         else:
             ip_before_format = self.addressList[switch_id]
-            ip_after_format = ip_before_format.split('/',1)[0]
+            ip_after_format = ip_before_format.split('/', 1)[0]
             id_after_format = switch_id[15]
             inbound_port = 10000 + int(id_after_format)
-            self.inbound_tuple = (ip_after_format, inbound_port)
+            self.inbound_tuple = ('127.0.0.1', inbound_port)
             return self.inbound_tuple
-    
+
     def create_inboundSocket(self, socket_tuple):
         inbound_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         inbound_conn.bind(socket_tuple)
         inbound_conn.listen()
         print(inbound_conn)
 
-        
+    def send_to_remote_socket(self, switch_id):
+        outbound_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        inbound_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        outbound_conn.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        inbound_conn.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+        outbound_conn.bind(('127.0.0.1', 50001))
+
+        inbound_conn.bind(('127.0.0.1', 10001))
+        inbound_conn.listen()
+
+        outbound_conn.connect(('127.0.0.1', 10001))
+        outbound_conn.send(f"This is{switch_id}".encode())
+
+        data = inbound_conn.recv(1024)
+        print(data)
+        outbound_conn.close()
+
     def __init__(self, dp, logger):
         print('Router init.')
         super(Router, self).__init__()
@@ -542,9 +568,10 @@ class Router(dict):
         self.dpid_str = dpid_lib.dpid_to_str(dp.id)
         self.sw_id = {'sw_id': self.dpid_str}
         self.logger = logger
-        
+
         self.addressList = {}
         self.inbound_tuple = ()
+        self.listeningList = {}
 
         self.port_data = PortData(dp.ports)
 
@@ -695,7 +722,7 @@ class Router(dict):
 
 
 class VlanRouter(object):
-    
+
     def __init__(self, vlan_id, dp, port_data, logger):
         super(VlanRouter, self).__init__()
         self.vlan_id = vlan_id
@@ -865,8 +892,8 @@ class VlanRouter(object):
             msg = 'Gateway=%s\'s address is not registered.' % gateway
             raise CommandFailure(msg=msg)
         elif dst_ip == address.default_gw:
-            msg = 'Gateway=%s is used as default gateway of address_id=%d'\
-                % (gateway, address.address_id)
+            msg = 'Gateway=%s is used as default gateway of address_id=%d' \
+                  % (gateway, address.address_id)
             raise CommandFailure(msg=msg)
         else:
             src_ip = address.default_gw
@@ -963,8 +990,8 @@ class VlanRouter(object):
 
         if skip_ids:
             skip_ids = ','.join(str(addr_id) for addr_id in skip_ids)
-            details = 'Skip delete (related route exist) [address_id=%s]'\
-                % skip_ids
+            details = 'Skip delete (related route exist) [address_id=%s]' \
+                      % skip_ids
             if msg:
                 msg[REST_DETAILS] += ', %s' % details
             else:
@@ -1552,6 +1579,7 @@ class OfCtl(object):
         def _register_of_version(cls):
             OfCtl._OF_VERSIONS.setdefault(version, cls)
             return cls
+
         return _register_of_version
 
     @staticmethod
@@ -1790,10 +1818,10 @@ class OfCtl_v1_0(OfCtl):
         actions = []
         if src_mac:
             actions.append(ofp_parser.OFPActionSetDlSrc(
-                           mac_lib.haddr_to_bin(src_mac)))
+                mac_lib.haddr_to_bin(src_mac)))
         if dst_mac:
             actions.append(ofp_parser.OFPActionSetDlDst(
-                           mac_lib.haddr_to_bin(dst_mac)))
+                mac_lib.haddr_to_bin(dst_mac)))
         if outport is not None:
             actions.append(ofp_parser.OFPActionOutput(outport))
 
