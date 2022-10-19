@@ -14,10 +14,14 @@
 # limitations under the License.
 
 
+from http import server
 import logging
 import numbers
+from re import U
 import socket
 import struct
+import random
+import time
 
 import json
 
@@ -509,6 +513,28 @@ class Router(dict):
     def printAddress(self):
         print(self.addressList)
         return self.addressList
+
+    def server_router_action(self, switch_id, api_in_data):
+        server_router_outbound_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_router_listening_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        server_router_outbound_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server_router_listening_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+        switch_index = switch_id[15]
+        switch_ts = time.time()
+        server_router_inbound_port = 10000 + int(switch_index)
+        unhashed_data_raw = {"type":1, "switch_id":switch_index, "TS":switch_ts, "data":api_in_data}
+        unhashed_data_ready = json.dumps
+
+        server_router_outbound_port = 50000 + int(switch_index)*1000 + random.randint(1,999)
+
+        server_router_outbound_soc.bind
+        
+        
+        server_router_listening_soc.bind(('127.0.0.1',server_router_inbound_port))
+
+        
 
     def printSelfInfo(self, switch_id):
         if not self.addressList:
