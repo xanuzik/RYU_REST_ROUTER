@@ -432,10 +432,16 @@ class RouterController(ControllerBase):
             router_list_single = sorted(router_list_single_raw)
             #sorted router id list with
 
-            router = all[int(switch_id[15])]
+            server_router = all[int(switch_id[15])]
             inbound_data = json.loads(req.body.decode('utf-8'))
             print(inbound_data)
-            router.server_send_logging_to_client_one_by_one(self, switch_id, 2)
+            server_switch_ts = time.time()
+            unhashed_data_raw = {"type": 1, "logging_switch_id": switch_id, \
+                                 "logging_ts": server_switch_ts, "logging_data": inbound_data}
+            unhashed_data_ready = json.dumps(unhashed_data_raw)
+            print(unhashed_data_ready)
+            for i in router_list_single:
+                server_router.server_send_logging_to_client_one_by_one(switch_id, i, unhashed_data_ready)
 
             if 'address' not in json.loads(req.body.decode('utf-8')):
 
@@ -560,7 +566,7 @@ class Router(dict):
             print(in_data)
 
 
-    def server_send_logging_to_client_one_by_one(self, server_switch_id, client_switch_id):
+    def server_send_logging_to_client_one_by_one(self, server_switch_id, client_switch_id, formatted_logging_data):
         # switch id不是list， 在controller的循环里去访问每个client路由器
 
         server_switch_outbound_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -579,12 +585,13 @@ class Router(dict):
         client_switch_listening_soc.listen()
 
         server_switch_outbound_soc.connect(('127.0.0.1', client_switch_inbound_port))
-        server_switch_outbound_soc.send(f"This is{server_switch_id}".encode())
-
+        server_switch_outbound_soc.send(f"This is {client_switch_id} \\n data is {formatted_logging_data}".encode())
         (incoming_from_server_switch, server_switch_tuple) = client_switch_listening_soc.accept()
         data = incoming_from_server_switch.recv(1024)
         print(data)
+
         server_switch_outbound_soc.close()
+        client_switch_listening_soc.close()
 
         #######################################################################
 
