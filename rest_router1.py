@@ -424,19 +424,18 @@ class RouterController(ControllerBase):
 
         if func == 'set_data':
             all = self._ROUTER_LIST
-            print(all)
             router_list_single_raw = []
             for i in all.keys():
                 router_list_single_raw.append(i)
-            print(router_list_single_raw)
+
             router_list_single_raw.remove(int(switch_id[15]))
             router_list_single = sorted(router_list_single_raw)
-            #sorted router id list with 1 digit
-            print(router_list_single)
+            #sorted router id list with
+
             router = all[int(switch_id[15])]
             inbound_data = json.loads(req.body.decode('utf-8'))
             print(inbound_data)
-            router.server_send_logging_to_client(switch_id, router_list_single, inbound_data)
+            router.server_send_logging_to_client_one_by_one(self, switch_id, 2)
 
             if 'address' not in json.loads(req.body.decode('utf-8')):
 
@@ -561,7 +560,7 @@ class Router(dict):
             print(in_data)
 
 
-    def server_send_logging_to_client_one_by_one(self, server_switch_id, client_switch_id_list, api_inbound_data):
+    def server_send_logging_to_client_one_by_one(self, server_switch_id, client_switch_id):
         # switch id不是list， 在controller的循环里去访问每个client路由器
 
         server_switch_outbound_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -573,41 +572,42 @@ class Router(dict):
         #############################################################################
         server_switch_index = server_switch_id[15]
         server_switch_outbound_port = 50000 + int(server_switch_index) * 1000 + random.randint(1, 999)
-
         server_switch_outbound_soc.bind(('127.0.0.1', server_switch_outbound_port))
+        
+        client_switch_inbound_port = 10000 + int(client_switch_id)
+        client_switch_listening_soc.bind(('127.0.0.1', client_switch_inbound_port))
+        client_switch_listening_soc.listen()
 
-        client_switch_listening_soc.bind(('127.0.0.1', 10001))
-        inbound_conn.listen()
+        server_switch_outbound_soc.connect(('127.0.0.1', client_switch_inbound_port))
+        server_switch_outbound_soc.send(f"This is{server_switch_id}".encode())
 
-        outbound_conn.connect(('127.0.0.1', 10001))
-        outbound_conn.send(f"This is{switch_id}".encode())
-
-        data = inbound_conn.recv(1024)
+        (incoming_from_server_switch, server_switch_tuple) = client_switch_listening_soc.accept()
+        data = incoming_from_server_switch.recv(1024)
         print(data)
-        outbound_conn.close()
+        server_switch_outbound_soc.close()
 
         #######################################################################
 
-        server_switch_index = server_switch_id[15]
-        server_switch_outbound_port = 50000 + int(server_switch_index) * 1000 + random.randint(1, 999)
+        # server_switch_index = server_switch_id[15]
+        # server_switch_outbound_port = 50000 + int(server_switch_index) * 1000 + random.randint(1, 999)
 
-        server_switch_ts = time.time()
-        unhashed_data_raw = {"type": 1, "logging_switch_id": server_switch_index, \
-                             "logging_ts": server_switch_ts, "logging_data": api_inbound_data}
-        unhashed_data_ready = json.dumps(unhashed_data_raw)
+        # server_switch_ts = time.time()
+        # unhashed_data_raw = {"type": 1, "logging_switch_id": server_switch_index, \
+        #                      "logging_ts": server_switch_ts, "logging_data": api_inbound_data}
+        # unhashed_data_ready = json.dumps(unhashed_data_raw)
 
-        server_switch_outbound_soc.bind(('127.0.0.1', server_switch_outbound_port))
+        # server_switch_outbound_soc.bind(('127.0.0.1', server_switch_outbound_port))
 
-        for client_switch_id in client_switch_id_list:
-            client_switch_index = int(client_switch_id)
-            client_switch_inbound_port = 10000 + client_switch_index
-            print(client_switch_inbound_port)
-            client_switch_listening_soc.bind(('127.0.0.1', int(client_switch_inbound_port)))
-            client_switch_listening_soc.listen()
-            server_switch_outbound_soc.connect(('127.0.0.1', int(client_switch_inbound_port)))
-            server_switch_outbound_soc.send(bytes(unhashed_data_ready, encoding="utf-8"))
-            (in_data, pair) = client_switch_listening_soc.accept()
-            print(in_data)        
+        # for client_switch_id in client_switch_id_list:
+        #     client_switch_index = int(client_switch_id)
+        #     client_switch_inbound_port = 10000 + client_switch_index
+        #     print(client_switch_inbound_port)
+        #     client_switch_listening_soc.bind(('127.0.0.1', int(client_switch_inbound_port)))
+        #     client_switch_listening_soc.listen()
+        #     server_switch_outbound_soc.connect(('127.0.0.1', int(client_switch_inbound_port)))
+        #     server_switch_outbound_soc.send(bytes(unhashed_data_ready, encoding="utf-8"))
+        #     (in_data, pair) = client_switch_listening_soc.accept()
+        #     print(in_data)        
 
     def server_router_action(self, switch_id, other_switch_id, api_in_data):
         # switchID和otherswidlist 是用16位的还是用个位的，稍后确定。哪个方便用哪个
