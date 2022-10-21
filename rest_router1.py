@@ -424,6 +424,7 @@ class RouterController(ControllerBase):
 
         if func == 'set_data':
             all = self._ROUTER_LIST
+            print(all)
             router_list_single_raw = []
             for i in all.keys():
                 router_list_single_raw.append(i)
@@ -431,8 +432,12 @@ class RouterController(ControllerBase):
             router_list_single_raw.remove(int(switch_id[15]))
             router_list_single = sorted(router_list_single_raw)
             #sorted router id list with 1 digit
-            
             print(router_list_single)
+            router = all[int(switch_id[15])]
+            inbound_data = json.loads(req.body.decode('utf-8'))
+            print(inbound_data)
+            router.server_send_logging_to_client(switch_id, router_list_single, inbound_data)
+
             if 'address' not in json.loads(req.body.decode('utf-8')):
 
                 all = self._ROUTER_LIST
@@ -542,14 +547,15 @@ class Router(dict):
                              "logging_ts": server_switch_ts, "logging_data": api_inbound_data}
         unhashed_data_ready = json.dumps(unhashed_data_raw)
 
-        server_switch_outbound_soc.bind(("127.0.0.1", server_switch_outbound_port))
+        server_switch_outbound_soc.bind(('127.0.0.1', server_switch_outbound_port))
 
         for client_switch_id in client_switch_id_list:
             client_switch_index = int(client_switch_id)
             client_switch_inbound_port = 10000 + client_switch_index
-            client_switch_listening_soc.bind(("127.0.0.1", client_switch_inbound_port))
+            print(client_switch_inbound_port)
+            client_switch_listening_soc.bind(('127.0.0.1', int(client_switch_inbound_port)))
             client_switch_listening_soc.listen()
-            server_switch_outbound_soc.connect(("127.0.0.1", client_switch_inbound_port))
+            server_switch_outbound_soc.connect(('127.0.0.1', int(client_switch_inbound_port)))
             server_switch_outbound_soc.send(bytes(unhashed_data_ready, encoding="utf-8"))
             (in_data, pair) = client_switch_listening_soc.accept()
             print(in_data)
