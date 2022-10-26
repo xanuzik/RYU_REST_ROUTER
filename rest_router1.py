@@ -423,23 +423,23 @@ class RouterController(ControllerBase):
         # switch_id 16
 
         if func == 'set_data':
-            all = self._ROUTER_LIST
+            all_router_objects = self._ROUTER_LIST
             router_list_single_raw = []
-            for i in all.keys():
-                router_list_single_raw.append(i)
+
+            for router_id in all_router_objects.keys():
+                router_list_single_raw.append(router_id)
 
             router_list_single_raw.remove(int(switch_id[15]))
             router_list_single = sorted(router_list_single_raw)
             #sorted router id list with
 
-            server_router = all[int(switch_id[15])]
+            server_router = all_router_objects[int(switch_id[15])]
             inbound_data = json.loads(req.body.decode('utf-8'))
-            print(inbound_data)
+            print(f"Received MGMT change for Switch ID{switch_id}, \n the data is{inbound_data}")
             server_switch_ts = time.time()
             unhashed_data_raw = {"type": 1, "logging_switch_id": switch_id, \
                                  "logging_ts": server_switch_ts, "logging_data": inbound_data}
             unhashed_data_ready = json.dumps(unhashed_data_raw)
-            print(unhashed_data_ready)
             for i in router_list_single:
                 server_router.server_send_logging_to_client_one_by_one(switch_id, i, unhashed_data_ready)
 
@@ -588,7 +588,7 @@ class Router(dict):
         server_switch_outbound_soc.send(f"This is {client_switch_id} \\n data is {formatted_logging_data}".encode())
         (incoming_from_server_switch, server_switch_tuple) = client_switch_listening_soc.accept()
         data = incoming_from_server_switch.recv(1024)
-        print(data)
+        print(f"Switch {client_switch_id} received logging data from Switch{server_switch_index}, \n logging data is{data}")
 
         server_switch_outbound_soc.close()
         client_switch_listening_soc.close()
