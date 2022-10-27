@@ -23,7 +23,9 @@ import socket
 import struct
 import random
 import time
+import uuid
 
+import hashlib
 import json
 from xmlrpc import client
 
@@ -423,25 +425,36 @@ class RouterController(ControllerBase):
         # switch_id 16
 
         if func == 'set_data':
-            all_router_objects = self._ROUTER_LIST
-            router_list_single_raw = []
 
-            for router_id in all_router_objects.keys():
-                router_list_single_raw.append(router_id)
+            if 'log' in json.loads(req.body.decode('utf-8')):
+                all_router_objects = self._ROUTER_LIST
+                router_list_single_raw = []
 
-            router_list_single_raw.remove(int(switch_id[15]))
-            router_list_single = sorted(router_list_single_raw)
-            #sorted router id list with
+                for router_id in all_router_objects.keys():
+                    router_list_single_raw.append(router_id)
 
-            server_router = all_router_objects[int(switch_id[15])]
-            inbound_data = json.loads(req.body.decode('utf-8'))
-            print(f"Received MGMT change for Switch ID{switch_id}, \n the data is{inbound_data}")
-            server_switch_ts = time.time()
-            unhashed_data_raw = {"type": 1, "logging_switch_id": switch_id, \
-                                 "logging_ts": server_switch_ts, "logging_data": inbound_data}
-            unhashed_data_ready = json.dumps(unhashed_data_raw)
-            for i in router_list_single:
-                server_router.server_send_logging_to_client_one_by_one(switch_id, i, unhashed_data_ready)
+                router_list_single_raw.remove(int(switch_id[15]))
+                router_list_single = sorted(router_list_single_raw)
+                ##sorted router id list with single digit
+
+                server_router = all_router_objects[int(switch_id[15])]
+                inbound_data = json.loads(req.body.decode('utf-8'))
+                print(f"Received MGMT change for Switch ID{switch_id}, \n the data is{inbound_data}")
+                server_switch_ts = time.time()
+                unhashed_data_raw = {"type": 1, "logging_switch_id": switch_id, \
+                                     "logging_ts": server_switch_ts, "logging_data": inbound_data}
+                unhashed_data_ready = json.dumps(unhashed_data_raw)
+
+                server_router.add_logging_to_logginglist(unhashed_data_ready)
+                server_router.hash_incomming_logging()
+
+                for i in router_list_single:
+                    client_router = all_router_objects[int(i)]
+                    client_router.add_logging_to_logginglist(unhashed_data_ready)
+                    print(client_router.logginglist)
+                    server_router.server_send_logging_to_client_one_by_one(switch_id, i, unhashed_data_ready)
+                    client_router.hash_incomming_logging()
+
 
             if 'address' not in json.loads(req.body.decode('utf-8')):
 
@@ -465,22 +478,22 @@ class RouterController(ControllerBase):
                         router.printSelfInfo(switch_id)
                         # router.addlisteningList(switch_id)
 
-                all = self._ROUTER_LIST
-                # print(all)
-                print(f"KAN {switch_id}")
-                switch_index = switch_id[15]
-                print(f'id is {switch_id}, type {type(switch_index)}')
-                index = int(switch_index)
+            # all = self._ROUTER_LIST
+            # # print(all)
+            # print(f"KAN {switch_id}")
+            # switch_index = switch_id[15]
+            # print(f'id is {switch_id}, type {type(switch_index)}')
+            # index = int(switch_index)
+            #
+            # para_tuple = all[index].inboundSocket(switch_id)
+            # print(para_tuple)
+            # router_inbound_socket = all[index].create_inboundSocket(para_tuple)
+            # print(router_inbound_socket)
+            # print(f"router {index} inbound socket created")
 
-                para_tuple = all[index].inboundSocket(switch_id)
-                print(para_tuple)
-                router_inbound_socket = all[index].create_inboundSocket(para_tuple)
-                print(router_inbound_socket)
-                print(f"router {index} inbound socket created")
-
-                # para_tuple = router.inboundSocket(switch_id)
-                # print(para_tuple)
-                # router.create_inboundSocket(para_tuple)
+            # para_tuple = router.inboundSocket(switch_id)
+            # print(para_tuple)
+            # router.create_inboundSocket(para_tuple)
         # else: 
         #     all = self._ROUTER_LIST
         #     for router in all.values():
@@ -524,6 +537,19 @@ class RouterController(ControllerBase):
 class Router(dict):
 
     # CHANGED BY KAN
+    def hash_incomming_logging(self):
+        hashed_logging = hashlib.sha256()
+
+        logging_entry_string = str(self.logginglist[-1]),
+        for i in range(5):
+            nonce_uuid = uuid.uuid4()
+            nonce_32bit = str(nonce_uuid)
+            nonce_string = nonce_32bit[0:8]
+            logging_nonce_string = str(logging_entry_string) + str(nonce_string)
+            logging_nonce_bytes = bytes(logging_nonce_string, encoding='utf-8')
+            hashed_logging.update(logging_nonce_bytes)
+            print(f"The {i+1} time hash of {self.sw_id}, nonce is {nonce_string}")
+            print(hashed_logging.hexdigest())
 
     def addAddress(self, switch_id, ip_address):
         self.addressList[switch_id] = ip_address
@@ -531,39 +557,12 @@ class Router(dict):
     def addlisteningList(self, switch_id, func_tuple):
         self.listeningList[switch_id] = func_tuple
 
+    def add_logging_to_logginglist(self, logging_content):
+        self.logginglist.append(logging_content)
+
     def printAddress(self):
         print(self.addressList)
         return self.addressList
-
-    def server_send_logging_to_client(self, server_switch_id, client_switch_id_list, api_inbound_data):
-        # switchID和otherswidlist 是用16位的还是用个位的，稍后确定。哪个方便用哪个
-
-        server_switch_outbound_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_switch_outbound_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-        client_switch_listening_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_switch_listening_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-        server_switch_index = server_switch_id[15]
-        server_switch_outbound_port = 50000 + int(server_switch_index) * 1000 + random.randint(1, 999)
-
-        server_switch_ts = time.time()
-        unhashed_data_raw = {"type": 1, "logging_switch_id": server_switch_index, \
-                             "logging_ts": server_switch_ts, "logging_data": api_inbound_data}
-        unhashed_data_ready = json.dumps(unhashed_data_raw)
-
-        server_switch_outbound_soc.bind(('127.0.0.1', server_switch_outbound_port))
-
-        for client_switch_id in client_switch_id_list:
-            client_switch_index = int(client_switch_id)
-            client_switch_inbound_port = 10000 + client_switch_index
-            print(client_switch_inbound_port)
-            client_switch_listening_soc.bind(('127.0.0.1', int(client_switch_inbound_port)))
-            client_switch_listening_soc.listen()
-            server_switch_outbound_soc.connect(('127.0.0.1', int(client_switch_inbound_port)))
-            server_switch_outbound_soc.send(bytes(unhashed_data_ready, encoding="utf-8"))
-            (in_data, pair) = client_switch_listening_soc.accept()
-            print(in_data)
 
 
     def server_send_logging_to_client_one_by_one(self, server_switch_id, client_switch_id, formatted_logging_data):
@@ -713,9 +712,12 @@ class Router(dict):
         self.sw_id = {'sw_id': self.dpid_str}
         self.logger = logger
 
+        self.logginglist=[]
         self.addressList = {}
         self.inbound_tuple = ()
         self.listeningList = {}
+        self.chain = []
+        self.hashinglist=[]
 
         self.port_data = PortData(dp.ports)
 
