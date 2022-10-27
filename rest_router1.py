@@ -452,7 +452,7 @@ class RouterController(ControllerBase):
                     client_router = all_router_objects[int(i)]
                     client_router.add_logging_to_logginglist(unhashed_data_ready)
                     print(client_router.logginglist)
-                    server_router.server_send_logging_to_client_one_by_one(switch_id, i, unhashed_data_ready)
+                    server_router.server_send_logging_to_client_one_by_one(switch_id, i, unhashed_data_ready, client_router)
                     client_router.hash_incomming_logging()
 
 
@@ -554,6 +554,9 @@ class Router(dict):
     def addAddress(self, switch_id, ip_address):
         self.addressList[switch_id] = ip_address
 
+    def testnewfunc(self):
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+
     def addlisteningList(self, switch_id, func_tuple):
         self.listeningList[switch_id] = func_tuple
 
@@ -565,7 +568,7 @@ class Router(dict):
         return self.addressList
 
 
-    def server_send_logging_to_client_one_by_one(self, server_switch_id, client_switch_id, formatted_logging_data):
+    def server_send_logging_to_client_one_by_one(self, server_switch_id, client_switch_id, formatted_logging_data,client_switch):
         # switch id不是list， 在controller的循环里去访问每个client路由器
 
         server_switch_outbound_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -591,6 +594,9 @@ class Router(dict):
 
         server_switch_outbound_soc.close()
         client_switch_listening_soc.close()
+
+        print(f"NEW FUNC!{client_switch_id}, AND {client_switch}")
+        client_switch.testnewfunc()
 
         #######################################################################
 
