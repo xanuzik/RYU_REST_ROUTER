@@ -478,34 +478,6 @@ class RouterController(ControllerBase):
                         router.printSelfInfo(switch_id)
                         # router.addlisteningList(switch_id)
 
-            # all = self._ROUTER_LIST
-            # # print(all)
-            # print(f"KAN {switch_id}")
-            # switch_index = switch_id[15]
-            # print(f'id is {switch_id}, type {type(switch_index)}')
-            # index = int(switch_index)
-            #
-            # para_tuple = all[index].inboundSocket(switch_id)
-            # print(para_tuple)
-            # router_inbound_socket = all[index].create_inboundSocket(para_tuple)
-            # print(router_inbound_socket)
-            # print(f"router {index} inbound socket created")
-
-            # para_tuple = router.inboundSocket(switch_id)
-            # print(para_tuple)
-            # router.create_inboundSocket(para_tuple)
-        # else: 
-        #     all = self._ROUTER_LIST
-        #     for router in all.values():
-        #         para_tuple = router.inboundSocket(switch_id)
-        #         print(para_tuple)
-        #         router_inbound_socket =router.create_inboundSocket(para_tuple)
-        #         print(router_inbound_socket)
-
-        # para_tuple = router.inboundSocket(switch_id)
-        # router.create_inboundSocket(para_tuple)
-        # print(para_tuple)
-
         try:
             param = req.json if req.body else {}
         except ValueError:
@@ -554,8 +526,6 @@ class Router(dict):
     def addAddress(self, switch_id, ip_address):
         self.addressList[switch_id] = ip_address
 
-    def testnewfunc(self):
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
     def addlisteningList(self, switch_id, func_tuple):
         self.listeningList[switch_id] = func_tuple
@@ -596,68 +566,8 @@ class Router(dict):
         client_switch_listening_soc.close()
 
         print(f"NEW FUNC!{client_switch_id}, AND {client_switch}")
-        client_switch.testnewfunc()
-
-        #######################################################################
-
-        # server_switch_index = server_switch_id[15]
-        # server_switch_outbound_port = 50000 + int(server_switch_index) * 1000 + random.randint(1, 999)
-
-        # server_switch_ts = time.time()
-        # unhashed_data_raw = {"type": 1, "logging_switch_id": server_switch_index, \
-        #                      "logging_ts": server_switch_ts, "logging_data": api_inbound_data}
-        # unhashed_data_ready = json.dumps(unhashed_data_raw)
-
-        # server_switch_outbound_soc.bind(('127.0.0.1', server_switch_outbound_port))
-
-        # for client_switch_id in client_switch_id_list:
-        #     client_switch_index = int(client_switch_id)
-        #     client_switch_inbound_port = 10000 + client_switch_index
-        #     print(client_switch_inbound_port)
-        #     client_switch_listening_soc.bind(('127.0.0.1', int(client_switch_inbound_port)))
-        #     client_switch_listening_soc.listen()
-        #     server_switch_outbound_soc.connect(('127.0.0.1', int(client_switch_inbound_port)))
-        #     server_switch_outbound_soc.send(bytes(unhashed_data_ready, encoding="utf-8"))
-        #     (in_data, pair) = client_switch_listening_soc.accept()
-        #     print(in_data)        
-
-    def server_router_action(self, switch_id, other_switch_id, api_in_data):
-        # switchID和otherswidlist 是用16位的还是用个位的，稍后确定。哪个方便用哪个
-
-        server_router_outbound_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_router_listening_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        server_router_outbound_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server_router_listening_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-        server_router_outbound_port = 50000 + int(switch_index) * 1000 + random.randint(1, 999)
-
-        switch_index = switch_id[15]
-        switch_ts = time.time()
-        unhashed_data_raw = {"type": 1, "logging_switch_id": switch_index, \
-                             "logging_ts": switch_ts, "logging_data": api_in_data}
-        unhashed_data_ready = json.dumps(unhashed_data_raw)
-
-        server_router_outbound_soc.bind(("127.0.0.1", server_router_outbound_port))
-
-        for client_switch_id in other_switch_id_list:
-            client_switch_index = client_switch_id[15]
-            server_router_outbound_soc.connect(("127.0.0.1", 10000 + int(client_switch_index)))
-            server_router_outbound_soc.send(bytes(unhashed_data_ready))
-            server_router_outbound_soc.close()
-
-    def client_router_action(self, other_switch_id_list):
-        client_router_listening_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_router_listening_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-        for client_switch_id in other_switch_id_list:
-            client_switch_index = client_switch_id[15]
-            client_router_listening_soc.bind(("127.0.0.1", 10000 + int(client_switch_index)))
-            client_router_listening_soc.listen()
-            while True:
-                (incomming_conn, server_router_tuple) = client_router_listening_soc.accept()
-                incomming_logging_data = incomming_conn.recv(1024)
-                print(incomming_logging_data)
+        client_switch.add_logging_to_logginglist(data)
+        print(f"This is Client {client_switch_id} logging list {client_switch.logginglist}")
 
     def printSelfInfo(self, switch_id):
         if not self.addressList:
@@ -672,43 +582,6 @@ class Router(dict):
                     pass
         id_ip_tuple = [ip_after_format, id_after_format]
         print(f"tuple of {switch_id} is \n {id_ip_tuple}")
-
-    def inboundSocket(self, switch_id):
-        # print(len(self.addressList))
-        if not self.addressList[switch_id]:
-            pass
-        else:
-            ip_before_format = self.addressList[switch_id]
-            ip_after_format = ip_before_format.split('/', 1)[0]
-            id_after_format = switch_id[15]
-            inbound_port = 10000 + int(id_after_format)
-            self.inbound_tuple = ('127.0.0.1', inbound_port)
-            return self.inbound_tuple
-
-    def create_inboundSocket(self, socket_tuple):
-        inbound_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        inbound_conn.bind(socket_tuple)
-        inbound_conn.listen()
-        print(inbound_conn)
-
-    def send_to_remote_socket(self, switch_id):
-        outbound_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        inbound_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        outbound_conn.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        inbound_conn.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-        outbound_conn.bind(('127.0.0.1', 50001))
-
-        inbound_conn.bind(('127.0.0.1', 10001))
-        inbound_conn.listen()
-
-        outbound_conn.connect(('127.0.0.1', 10001))
-        outbound_conn.send(f"This is{switch_id}".encode())
-
-        data = inbound_conn.recv(1024)
-        print(data)
-        outbound_conn.close()
 
     def __init__(self, dp, logger):
         print('Router init.')
