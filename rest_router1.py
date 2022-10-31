@@ -443,15 +443,18 @@ class RouterController(ControllerBase):
                 server_switch_ts = time.time()
                 unhashed_data_raw = {"type": 1, "logging_switch_id": switch_id, \
                                      "logging_ts": server_switch_ts, "logging_data": inbound_data}
-                unhashed_data_ready = json.dumps(unhashed_data_raw)
+                #raw is dict
 
-                server_router.add_logging_to_logginglist(unhashed_data_ready)
+                unhashed_data_ready = json.dumps(unhashed_data_raw)
+                #ready is string
+
+                server_router.add_logging_to_logginglist(unhashed_data_raw)
                 server_router.hash_incomming_logging()
 
                 for i in router_list_single:
                     client_router = all_router_objects[int(i)]
-                    client_router.add_logging_to_logginglist(unhashed_data_ready)
-                    print(client_router.logginglist)
+                    # client_router.add_logging_to_logginglist(unhashed_data_ready)
+                    # print(client_router.logginglist)
                     server_router.server_send_logging_to_client_one_by_one(switch_id, i, unhashed_data_ready, client_router)
                     client_router.hash_incomming_logging()
 
@@ -512,16 +515,60 @@ class Router(dict):
     def hash_incomming_logging(self):
         hashed_logging = hashlib.sha256()
 
-        logging_entry_string = str(self.logginglist[-1]),
+        logging_entry_string = str(self.logginglist[-1])
+        self.chainunit['ID'] = len(self.logginglist)
+        self.chainunit['log_entry'] = self.logginglist[-1]
+        self.chainunit['prev_hash'] = self.chainlist[-1]['current_hash']
+
+
         for i in range(5):
             nonce_uuid = uuid.uuid4()
             nonce_32bit = str(nonce_uuid)
             nonce_string = nonce_32bit[0:8]
-            logging_nonce_string = str(logging_entry_string) + str(nonce_string)
+            logging_nonce_string = str(self.chainunit) + str(nonce_string)
+            print(logging_nonce_string)
             logging_nonce_bytes = bytes(logging_nonce_string, encoding='utf-8')
             hashed_logging.update(logging_nonce_bytes)
+
             print(f"The {i+1} time hash of {self.sw_id}, nonce is {nonce_string}")
             print(hashed_logging.hexdigest())
+            hashed_logging_value = hashed_logging.hexdigest()
+            self.hashinglist[nonce_string] = hashed_logging_value
+
+            if i == 4:
+                print("   ")
+                print(f"The hashing result list of SW {self.sw_id}")
+                print(self.hashinglist)
+                #print(type(self.hashinglist))
+                comparelist = []
+                for value in self.hashinglist.values():
+                    print(value)
+                    comparelist.append(int(value, 16))
+                max_value = format(max(comparelist), 'x') #hex give str with '0x' surffix'
+                print(f"MAX HASH is {max_value}")
+
+                #get the max hashed value and the nonce from the hashing list
+                #hashed_logging_dict_for_send = []
+                # hashed_logging_dict_for_send = self.logginglist[-1]
+                # print(type(hashed_logging_dict_for_send))
+                best_hash_value = {}
+                best_hash_value['SWID'] = self.sw_id
+                for key, value in self.hashinglist.items():
+                    if value == max_value:
+                        best_hash_value['nonce'] = key
+                        best_hash_value['HASH'] = max_value
+                        print("zuidacidian")
+                        print(best_hash_value)
+                    else:
+                        pass
+
+
+
+                #
+                # max_key = (j for j in self.hashinglist if self.hashinglist[j]==max_value)
+                # result = self.hashinglist.get((hex(max(comparelist))))
+                # print(result)
+
 
     def addAddress(self, switch_id, ip_address):
         self.addressList[switch_id] = ip_address
@@ -538,7 +585,7 @@ class Router(dict):
         return self.addressList
 
 
-    def server_send_logging_to_client_one_by_one(self, server_switch_id, client_switch_id, formatted_logging_data,client_switch):
+    def server_send_logging_to_client_one_by_one(self, server_switch_id, client_switch_id, formatted_logging_data, client_switch):
         # switch id不是list， 在controller的循环里去访问每个client路由器
 
         server_switch_outbound_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -557,15 +604,17 @@ class Router(dict):
         client_switch_listening_soc.listen()
 
         server_switch_outbound_soc.connect(('127.0.0.1', client_switch_inbound_port))
-        server_switch_outbound_soc.send(f"This is {client_switch_id} \\n data is {formatted_logging_data}".encode())
+        server_switch_outbound_soc.send(formatted_logging_data.encode())
         (incoming_from_server_switch, server_switch_tuple) = client_switch_listening_soc.accept()
-        data = incoming_from_server_switch.recv(1024)
-        print(f"Switch {client_switch_id} received logging data from Switch{server_switch_index}, \n logging data is{data}")
+
+        raw_data = incoming_from_server_switch.recv(1024).decode()
+        #raw is string
+        data =json.loads(raw_data)
+        #data is dict
 
         server_switch_outbound_soc.close()
         client_switch_listening_soc.close()
 
-        print(f"NEW FUNC!{client_switch_id}, AND {client_switch}")
         client_switch.add_logging_to_logginglist(data)
         print(f"This is Client {client_switch_id} logging list {client_switch.logginglist}")
 
@@ -595,8 +644,9 @@ class Router(dict):
         self.addressList = {}
         self.inbound_tuple = ()
         self.listeningList = {}
-        self.chain = []
-        self.hashinglist=[]
+        self.chainlist = [{'ID':0, 'log_entry':'0', 'prev_hash':'0','nonce':'0000000','current_hash':'cb9ae5a0b1877fe47cfac29acbc4139648cb715438152fd765f2975f6377d86b'}]
+        self.chainunit = {}
+        self.hashinglist={}
 
         self.port_data = PortData(dp.ports)
 
