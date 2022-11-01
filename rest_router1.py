@@ -449,7 +449,12 @@ class RouterController(ControllerBase):
                 #ready is string
 
                 server_router.add_logging_to_logginglist(unhashed_data_raw)
+                #server_router.hash_incomming_logging()
+
                 server_router.hash_incomming_logging()
+                print("SERVER BEST!")
+                print(server_router.self_best_hash_to_be_sent)
+                print("END SERVER!")
 
                 for i in router_list_single:
                     client_router = all_router_objects[int(i)]
@@ -457,6 +462,9 @@ class RouterController(ControllerBase):
                     # print(client_router.logginglist)
                     server_router.server_send_logging_to_client_one_by_one(switch_id, i, unhashed_data_ready, client_router)
                     client_router.hash_incomming_logging()
+                    print("CLIENT BEST!")
+                    print(client_router.self_best_hash_to_be_sent)
+                    print("CLIENT END!")
 
 
             if 'address' not in json.loads(req.body.decode('utf-8')):
@@ -526,7 +534,7 @@ class Router(dict):
             nonce_32bit = str(nonce_uuid)
             nonce_string = nonce_32bit[0:8]
             logging_nonce_string = str(self.chainunit) + str(nonce_string)
-            print(logging_nonce_string)
+            #print(logging_nonce_string)
             logging_nonce_bytes = bytes(logging_nonce_string, encoding='utf-8')
             hashed_logging.update(logging_nonce_bytes)
 
@@ -541,8 +549,10 @@ class Router(dict):
                 print(self.hashinglist)
                 #print(type(self.hashinglist))
                 comparelist = []
+
+                #get the largest HASH value
                 for value in self.hashinglist.values():
-                    print(value)
+                    #print(value)
                     comparelist.append(int(value, 16))
                 max_value = format(max(comparelist), 'x') #hex give str with '0x' surffix'
                 print(f"MAX HASH is {max_value}")
@@ -551,16 +561,21 @@ class Router(dict):
                 #hashed_logging_dict_for_send = []
                 # hashed_logging_dict_for_send = self.logginglist[-1]
                 # print(type(hashed_logging_dict_for_send))
-                best_hash_value = {}
-                best_hash_value['SWID'] = self.sw_id
+                best_hash_value_to_be_sent = {}
+
+                #get the largest HASH value and nonce
+                best_hash_value_to_be_sent = self.sw_id
                 for key, value in self.hashinglist.items():
                     if value == max_value:
-                        best_hash_value['nonce'] = key
-                        best_hash_value['HASH'] = max_value
-                        print("zuidacidian")
-                        print(best_hash_value)
+                        best_hash_value_to_be_sent['nonce'] = key
+                        best_hash_value_to_be_sent['HASH'] = max_value
+                        print("Largest HASHING value")
+                        print(best_hash_value_to_be_sent)
                     else:
                         pass
+                self.self_best_hash_to_be_sent = best_hash_value_to_be_sent
+                return self.self_best_hash_to_be_sent
+
 
 
 
@@ -647,6 +662,9 @@ class Router(dict):
         self.chainlist = [{'ID':0, 'log_entry':'0', 'prev_hash':'0','nonce':'0000000','current_hash':'cb9ae5a0b1877fe47cfac29acbc4139648cb715438152fd765f2975f6377d86b'}]
         self.chainunit = {}
         self.hashinglist={}
+
+        self.self_best_hash_to_be_sent = {}
+        self.best_hash_value_pair = {}
 
         self.port_data = PortData(dp.ports)
 
