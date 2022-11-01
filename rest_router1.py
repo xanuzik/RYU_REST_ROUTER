@@ -527,6 +527,11 @@ class Router(dict):
         self.chainunit['ID'] = len(self.logginglist)
         self.chainunit['log_entry'] = self.logginglist[-1]
         self.chainunit['prev_hash'] = self.chainlist[-1]['current_hash']
+        self.chainunit['hash_sw_id'] = self.sw_id['sw_id']
+        # print('CONTAINED LOGGINGS!')
+        # print(self.logginglist)
+        # print('CANDIDATE CHAIN!')
+        # print(self.chainunit)
 
 
         for i in range(5):
@@ -558,9 +563,7 @@ class Router(dict):
                 print(f"MAX HASH is {max_value}")
 
                 #get the max hashed value and the nonce from the hashing list
-                #hashed_logging_dict_for_send = []
-                # hashed_logging_dict_for_send = self.logginglist[-1]
-                # print(type(hashed_logging_dict_for_send))
+
                 best_hash_value_to_be_sent = {}
 
                 #get the largest HASH value and nonce
@@ -573,7 +576,11 @@ class Router(dict):
                         print(best_hash_value_to_be_sent)
                     else:
                         pass
+                #clear info of last round
+                self.self_best_hash_to_be_sent = {}
                 self.self_best_hash_to_be_sent = best_hash_value_to_be_sent
+                #clear info of last round
+                self.hashinglist = {}
                 return self.self_best_hash_to_be_sent
 
 
@@ -659,7 +666,7 @@ class Router(dict):
         self.addressList = {}
         self.inbound_tuple = ()
         self.listeningList = {}
-        self.chainlist = [{'ID':0, 'log_entry':'0', 'prev_hash':'0','nonce':'0000000','current_hash':'cb9ae5a0b1877fe47cfac29acbc4139648cb715438152fd765f2975f6377d86b'}]
+        self.chainlist = [{'ID':0, 'log_entry':'0', 'prev_hash':'0','hash_sw_id':'0', 'nonce':'0000000','current_hash':'84aa7df33f453af2e9d12543ec2ab7c90140e250141849e4c94f6921119dc729'}]
         self.chainunit = {}
         self.hashinglist={}
 
