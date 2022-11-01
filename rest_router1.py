@@ -455,6 +455,7 @@ class RouterController(ControllerBase):
                 print("SERVER BEST!")
                 print(server_router.self_best_hash_to_be_sent)
                 print("END SERVER!")
+                server_router.candidate_hash_values.append(server_router.self_best_hash_to_be_sent)
 
                 for i in router_list_single:
                     client_router = all_router_objects[int(i)]
@@ -465,6 +466,16 @@ class RouterController(ControllerBase):
                     print("CLIENT BEST!")
                     print(client_router.self_best_hash_to_be_sent)
                     print("CLIENT END!")
+                    #server_router.candidate_hash_values.append(server_router.self_best_hash_to_be_sent)
+                
+                for i in router_list_single_raw:
+                    server_router = all_router_objects[int(i)]
+                    client_router_list = router_list_single_raw.remove[int(i)]
+                    for k in client_router_list:
+                        client_router = all_router_objects[int(k)]
+                        print(k)
+                        print(client_router)
+                        print(client_router.self_best_hash_to_be_sent)
 
 
             if 'address' not in json.loads(req.body.decode('utf-8')):
@@ -582,6 +593,7 @@ class Router(dict):
                 #clear info of last round
                 self.hashinglist = {}
                 return self.self_best_hash_to_be_sent
+        
 
 
 
@@ -605,6 +617,37 @@ class Router(dict):
     def printAddress(self):
         print(self.addressList)
         return self.addressList
+
+    # def send_candidate_nonce_to_others(self, server_switch_id, client_switch_id, self_best_hash):
+    #     server_switch_outbound_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    #     server_switch_outbound_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+    #     client_switch_listening_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    #     client_switch_listening_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+    #     #############################################################################
+    #     server_switch_index = server_switch_id[15]
+    #     server_switch_outbound_port = 50000 + int(server_switch_index) * 1000 + random.randint(1, 999)
+    #     server_switch_outbound_soc.bind(('127.0.0.1', server_switch_outbound_port))
+        
+    #     client_switch_inbound_port = 10000 + int(client_switch_id)
+    #     client_switch_listening_soc.bind(('127.0.0.1', client_switch_inbound_port))
+    #     client_switch_listening_soc.listen()
+
+    #     server_switch_outbound_soc.connect(('127.0.0.1', client_switch_inbound_port))
+    #     server_switch_outbound_soc.send(formatted_logging_data.encode())
+    #     (incoming_from_server_switch, server_switch_tuple) = client_switch_listening_soc.accept()
+
+    #     raw_data = incoming_from_server_switch.recv(1024).decode()
+    #     #raw is string
+    #     data =json.loads(raw_data)
+    #     #data is dict
+
+    #     server_switch_outbound_soc.close()
+    #     client_switch_listening_soc.close()
+
+    #     client_switch.add_logging_to_logginglist(data)
+    #     print(f"This is Client {client_switch_id} logging list {client_switch.logginglist}")
 
 
     def server_send_logging_to_client_one_by_one(self, server_switch_id, client_switch_id, formatted_logging_data, client_switch):
@@ -640,6 +683,8 @@ class Router(dict):
         client_switch.add_logging_to_logginglist(data)
         print(f"This is Client {client_switch_id} logging list {client_switch.logginglist}")
 
+
+
     def printSelfInfo(self, switch_id):
         if not self.addressList:
             pass
@@ -672,6 +717,7 @@ class Router(dict):
 
         self.self_best_hash_to_be_sent = {}
         self.best_hash_value_pair = {}
+        self.candidate_hash_values = []
 
         self.port_data = PortData(dp.ports)
 
