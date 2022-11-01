@@ -467,15 +467,34 @@ class RouterController(ControllerBase):
                     print(client_router.self_best_hash_to_be_sent)
                     print("CLIENT END!")
                     #server_router.candidate_hash_values.append(server_router.self_best_hash_to_be_sent)
-                
-                for i in router_list_single_raw:
-                    server_router = all_router_objects[int(i)]
-                    client_router_list = router_list_single_raw.remove[int(i)]
+
+                ####################################
+                ##prepare to send HASH values
+                ########################################
+                all_router_objects = self._ROUTER_LIST
+                router_list_single_raw = []
+
+                for router_id in all_router_objects.keys():
+                    router_list_single_raw.append(router_id)
+                print(all_router_objects)
+
+                for i in range(len(router_list_single_raw)):
+                    #print(i)
+                    server_router = all_router_objects[router_list_single_raw[i]]
+                    #print(server_router)
+                    client_router_list = router_list_single_raw.copy()
+                    #print(client_router_list)
+                    client_router_list.pop(i)
+                    print("OUTER LOOP")
+                    print(server_router.self_best_hash_to_be_sent)
+                    #print(client_router_list)
                     for k in client_router_list:
                         client_router = all_router_objects[int(k)]
-                        print(k)
-                        print(client_router)
+                        #print(k)
+                        #print(client_router)
                         print(client_router.self_best_hash_to_be_sent)
+                        print('XXXXXXXXXXXXXXX')
+
 
 
             if 'address' not in json.loads(req.body.decode('utf-8')):
