@@ -481,7 +481,7 @@ class RouterController(ControllerBase):
 
                 for router_id in all_router_objects.keys():
                     router_list_single_raw.append(router_id)
-                print(all_router_objects)
+                #print(all_router_objects)
 
                 for i in range(len(router_list_single_raw)):
                     server_router = all_router_objects[router_list_single_raw[i]]
@@ -489,18 +489,22 @@ class RouterController(ControllerBase):
                     json_ready = json.dumps(server_router.self_best_hash_to_be_sent)
                     client_router_list = router_list_single_raw.copy()
                     client_router_list.pop(i)
-                    print("OUTER LOOP, server")
-                    print(server_router.self_best_hash_to_be_sent)
+                    # print("OUTER LOOP, server")
+                    # print(server_router.self_best_hash_to_be_sent)
                     for k in client_router_list:
                         client_router = all_router_objects[int(k)]
-                        print(client_router.self_best_hash_to_be_sent)
+                        # print(client_router.self_best_hash_to_be_sent)
                         other_router_hash = server_router.server_send_logging_to_client_one_by_one(i,k,json_ready, client_router)
                         client_router.hashcomparelist.append(other_router_hash)
 
                 for i in range(len(router_list_single_raw)):
                     server_router = all_router_objects[router_list_single_raw[i]]
-                    print(f"This is {i+1} switch")
+                    print(f"This is f{server_router.sw_id['sw_id']} switch")
                     print(server_router.hashcomparelist)
+                    server_router.find_best_hashing_among_routers()
+
+
+
 
 
 
@@ -560,7 +564,7 @@ class Router(dict):
 
     # CHANGED BY KAN
     def hash_incomming_logging(self):
-        hashed_logging = hashlib.sha256()
+
 
         self.chainunit['ID'] = len(self.logginglist)
         self.chainunit['log_entry'] = self.logginglist[-1]
@@ -568,16 +572,19 @@ class Router(dict):
         self.chainunit['hash_sw_id'] = self.sw_id['sw_id']
 
         for i in range(5):
+            hashed_logging = hashlib.sha256()
             nonce_uuid = uuid.uuid4()
             nonce_32bit = str(nonce_uuid)
             nonce_string = nonce_32bit[0:8]
             logging_nonce_string = str(self.chainunit) + str(nonce_string)
-            #print(logging_nonce_string)
+            print("xxxxxxxxxxx")
+            print(logging_nonce_string)
             logging_nonce_bytes = bytes(logging_nonce_string, encoding='utf-8')
+            print(logging_nonce_bytes)
             hashed_logging.update(logging_nonce_bytes)
 
             #print(f"The {i+1} time hash of {self.sw_id}, nonce is {nonce_string}")
-            print(hashed_logging.hexdigest())
+            #print(hashed_logging.hexdigest())
             hashed_logging_value = hashed_logging.hexdigest()
             self.hashinglist[nonce_string] = hashed_logging_value
 
@@ -605,7 +612,7 @@ class Router(dict):
                     if value == max_value:
                         best_hash_value_to_be_sent['nonce'] = key
                         best_hash_value_to_be_sent['HASH'] = max_value
-                        print("Largest HASHING value")
+                        print("THE DATA TO BE SENT IS")
                         print(best_hash_value_to_be_sent)
                     else:
                         pass
@@ -617,14 +624,22 @@ class Router(dict):
                 return self.self_best_hash_to_be_sent
         
 
-
-
-
-                #
-                # max_key = (j for j in self.hashinglist if self.hashinglist[j]==max_value)
-                # result = self.hashinglist.get((hex(max(comparelist))))
-                # print(result)
-
+    def find_best_hashing_among_routers(self):
+        max_value = int(self.hashcomparelist[0]['HASH'],16)
+        max_value_index = 0
+        i = 1
+        if i < int(len(self.hashcomparelist)):
+            if int(self.hashcomparelist[i]['HASH'],16) > max_value:
+                max_value = int(self.hashcomparelist[i]['HASH'],16)
+                max_value_index = i
+            else:
+                pass
+            i = i+1
+        self.chainunit['hash_sw_id'] = self.hashcomparelist[max_value_index]['sw_id']
+        self.chainunit['nonce'] = self.hashcomparelist[max_value_index]['nonce']
+        self.chainunit['current_hash'] = self.hashcomparelist[max_value_index]['HASH']
+        print(f"{self.sw_id['sw_id']}max index is {self.hashcomparelist[max_value_index]}, max is {max_value}")
+        print(self.chainunit)
 
     def addAddress(self, switch_id, ip_address):
         self.addressList[switch_id] = ip_address
