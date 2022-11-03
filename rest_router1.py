@@ -455,7 +455,7 @@ class RouterController(ControllerBase):
                 print("SERVER BEST!")
                 print(server_router.self_best_hash_to_be_sent)
                 print("END SERVER!")
-                server_router.candidate_hash_values.append(server_router.self_best_hash_to_be_sent)
+                #server_router.candidate_hash_values.append(server_router.self_best_hash_to_be_sent)
 
 
                 for i in router_list_single:
@@ -493,16 +493,18 @@ class RouterController(ControllerBase):
                     # print(server_router.self_best_hash_to_be_sent)
                     for k in client_router_list:
                         client_router = all_router_objects[int(k)]
-                        # print(client_router.self_best_hash_to_be_sent)
                         other_router_hash = server_router.server_send_logging_to_client_one_by_one(i,k,json_ready, client_router)
                         client_router.hashcomparelist.append(other_router_hash)
 
                 for i in range(len(router_list_single_raw)):
                     server_router = all_router_objects[router_list_single_raw[i]]
-                    print(f"This is f{server_router.sw_id['sw_id']} switch")
-                    print(server_router.hashcomparelist)
+                    # print(f"This is f{server_router.sw_id['sw_id']} switch")
+                    # print(server_router.hashcomparelist)
                     server_router.find_best_hashing_among_routers()
 
+                    server_router.show_processing_info()
+                    server_router.clear_onetime_used_list()
+                    server_router.verify_clearance()
 
 
 
@@ -578,7 +580,7 @@ class Router(dict):
             nonce_string = nonce_32bit[0:8]
             logging_nonce_string = str(self.chainunit) + str(nonce_string)
             print("xxxxxxxxxxx")
-            print(logging_nonce_string)
+            #print(logging_nonce_string)
             logging_nonce_bytes = bytes(logging_nonce_string, encoding='utf-8')
             print(logging_nonce_bytes)
             hashed_logging.update(logging_nonce_bytes)
@@ -590,17 +592,17 @@ class Router(dict):
 
             if i == 4:
                 #print("   ")
-                print(f"The hashing result list of SW {self.sw_id}")
-                print(self.hashinglist)
+                #print(f"The hashing result list of SW {self.sw_id}")
+                #print(self.hashinglist)
                 #print(type(self.hashinglist))
-                comparelist = []
+                inner_hash_comparelist = []
 
                 #get the largest HASH value
                 for value in self.hashinglist.values():
                     #print(value)
-                    comparelist.append(int(value, 16))
-                max_value = format(max(comparelist), 'x') #hex give str with '0x' surffix'
-                print(f"MAX HASH is {max_value}")
+                    inner_hash_comparelist.append(int(value, 16))
+                max_value = format(max(inner_hash_comparelist), 'x') #hex give str with '0x' surffix'
+                #print(f"MAX HASH is {max_value}")
 
                 #get the max hashed value and the nonce from the hashing list
 
@@ -612,14 +614,16 @@ class Router(dict):
                     if value == max_value:
                         best_hash_value_to_be_sent['nonce'] = key
                         best_hash_value_to_be_sent['HASH'] = max_value
-                        print("THE DATA TO BE SENT IS")
-                        print(best_hash_value_to_be_sent)
+                        #print("THE DATA TO BE SENT IS")
+                        #print(best_hash_value_to_be_sent)
                     else:
                         pass
+
                 #clear info of last round
                 self.self_best_hash_to_be_sent = {}
                 self.self_best_hash_to_be_sent = best_hash_value_to_be_sent
                 #clear info of last round
+                self.hashinglist_be_printed = self.hashinglist.copy()
                 self.hashinglist = {}
                 return self.self_best_hash_to_be_sent
         
@@ -638,9 +642,33 @@ class Router(dict):
         self.chainunit['hash_sw_id'] = self.hashcomparelist[max_value_index]['sw_id']
         self.chainunit['nonce'] = self.hashcomparelist[max_value_index]['nonce']
         self.chainunit['current_hash'] = self.hashcomparelist[max_value_index]['HASH']
-        print(f"{self.sw_id['sw_id']}max index is {self.hashcomparelist[max_value_index]}, max is {max_value}")
-        print(self.chainunit)
+        self.chainlist.append(self.chainunit)
+        # print(f"{self.sw_id['sw_id']}max index is {self.hashcomparelist[max_value_index]}")
+        # print(self.chainunit)
+        # print(self.chainlist)
+        # print("XXX")
+        # print(self.hashcomparelist)
 
+    def clear_onetime_used_list(self):
+        self.self_best_hash_to_be_sent ={}
+        self.hashinglist = {}
+        self.hashcomparelist =[]
+        self.chainunit = {}
+        self.hashinglist_be_printed = {}
+
+    def show_processing_info(self):
+        print(f"This is Switch {self.sw_id['sw_id']}")
+        print(f"Info of round {int(len(self.logginglist))}")
+        print(self.self_best_hash_to_be_sent)
+        print(self.hashinglist_be_printed)
+        print(self.chainlist)
+
+    def verify_clearance(self):
+        print(self.self_best_hash_to_be_sent)
+        print(self.hashinglist)
+        print(self.hashcomparelist)
+        print(self.chainunit)
+        print(self.hashinglist_be_printed)
     def addAddress(self, switch_id, ip_address):
         self.addressList[switch_id] = ip_address
 
@@ -654,38 +682,6 @@ class Router(dict):
     def printAddress(self):
         print(self.addressList)
         return self.addressList
-
-    # def send_candidate_nonce_to_others(self, server_switch_id, client_switch_id, self_best_hash):
-    #     server_switch_outbound_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #     server_switch_outbound_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-    #     client_switch_listening_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #     client_switch_listening_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-    #     #############################################################################
-    #     server_switch_index = server_switch_id[15]
-    #     server_switch_outbound_port = 50000 + int(server_switch_index) * 1000 + random.randint(1, 999)
-    #     server_switch_outbound_soc.bind(('127.0.0.1', server_switch_outbound_port))
-        
-    #     client_switch_inbound_port = 10000 + int(client_switch_id)
-    #     client_switch_listening_soc.bind(('127.0.0.1', client_switch_inbound_port))
-    #     client_switch_listening_soc.listen()
-
-    #     server_switch_outbound_soc.connect(('127.0.0.1', client_switch_inbound_port))
-    #     server_switch_outbound_soc.send(formatted_logging_data.encode())
-    #     (incoming_from_server_switch, server_switch_tuple) = client_switch_listening_soc.accept()
-
-    #     raw_data = incoming_from_server_switch.recv(1024).decode()
-    #     #raw is string
-    #     data =json.loads(raw_data)
-    #     #data is dict
-
-    #     server_switch_outbound_soc.close()
-    #     client_switch_listening_soc.close()
-
-    #     client_switch.add_logging_to_logginglist(data)
-    #     print(f"This is Client {client_switch_id} logging list {client_switch.logginglist}")
-
 
     def server_send_logging_to_client_one_by_one(self, server_switch_id, client_switch_id, formatted_logging_data, client_switch):
         # switch id不是list， 在controller的循环里去访问每个client路由器
@@ -749,13 +745,15 @@ class Router(dict):
         self.inbound_tuple = ()
         self.listeningList = {}
         self.chainlist = [{'ID':0, 'log_entry':'0', 'prev_hash':'0','hash_sw_id':'0', 'nonce':'0000000','current_hash':'84aa7df33f453af2e9d12543ec2ab7c90140e250141849e4c94f6921119dc729'}]
+
         self.chainunit = {}
         self.hashinglist={}
         self.hashcomparelist = []
-
         self.self_best_hash_to_be_sent = {}
-        self.best_hash_value_pair = {}
-        self.candidate_hash_values = []
+        self.hashinglist_be_printed = {}
+
+        #self.best_hash_value_pair = {}
+        #self.candidate_hash_values = []
 
         self.port_data = PortData(dp.ports)
 
