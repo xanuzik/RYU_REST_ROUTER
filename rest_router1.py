@@ -12,7 +12,8 @@
 # implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import datetime
+from threading import Timer
 
 from base64 import encode
 from http import server
@@ -426,6 +427,17 @@ class RouterController(ControllerBase):
 
         if func == 'set_data':
 
+            def time_printer():
+                all_router_objects = self._ROUTER_LIST
+                for ids in all_router_objects.keys():
+                    all_router_objects[ids].minute_hash_logging()
+                print(f"now {time.time()}")
+                loop()
+            def loop():
+                t = Timer(60, time_printer)
+                t.start()
+            loop()
+
             if 'log' in json.loads(req.body.decode('utf-8')):
                 all_router_objects = self._ROUTER_LIST
                 router_list_single_raw = []
@@ -504,7 +516,7 @@ class RouterController(ControllerBase):
 
                     server_router.show_processing_info()
                     server_router.clear_onetime_used_list()
-                    server_router.verify_clearance()
+                    #server_router.verify_clearance()
 
 
 
@@ -565,6 +577,29 @@ class RouterController(ControllerBase):
 class Router(dict):
 
     # CHANGED BY KAN
+    def minute_hash_logging(self):
+        self.merkle_cache_list = self.logginglist.copy()
+        if len(self.merkle_cache_list) == 0:
+            print("The length is 0 nologgong!")
+            return "nologging"
+        if len(self.merkle_cache_list) == 1:
+            print("The length is 1 done tree")
+            print(str(self.merkle_cache_list[0]))
+            print(hashlib.sha256(str(self.merkle_cache_list[0]).encode()).hexdigest())
+        while len(self.merkle_cache_list) > 1:
+            if len(self.merkle_cache_list) % 2 == 1:
+                self.merkle_cache_list.append((self.merkle_cache_list[-1]))
+            hashes = []
+            for i in range(0, len(self.merkle_cache_list) , 2):
+                hash1 = hashlib.sha256(str(self.merkle_cache_list[i]).encode()).hexdigest()
+                hash2 = hashlib.sha256(str(self.merkle_cache_list[i+1]).encode()).hexdigest()
+                hash12 = hash1+hash2
+                hashes.append(hashlib.sha256(hash12.encode()).hexdigest())
+            self.merkle_cache_list = hashes
+            if len(self.merkle_cache_list) == 1:
+                print(f"this {self.sw_id}, done merkle of {len(self.logginglist)}")
+                print(f"{self.merkle_cache_list[-1]}")
+
     def hash_incomming_logging(self):
 
 
@@ -609,7 +644,7 @@ class Router(dict):
                 best_hash_value_to_be_sent = {}
 
                 #get the largest HASH value and nonce
-                best_hash_value_to_be_sent = self.sw_id
+                best_hash_value_to_be_sent['sw_id'] = self.sw_id
                 for key, value in self.hashinglist.items():
                     if value == max_value:
                         best_hash_value_to_be_sent['nonce'] = key
@@ -659,10 +694,16 @@ class Router(dict):
     def show_processing_info(self):
         print(f"This is Switch {self.sw_id['sw_id']}")
         print(f"Info of round {int(len(self.logginglist))}")
-        print(self.self_best_hash_to_be_sent)
+        print(f"The best hash value is {self.self_best_hash_to_be_sent}")
+        print("The candidates are:")
+        # for k,v in self.hashinglist_be_printed:
+        #     print(f"Nonce is {k}, hash is{v}")
         print(self.hashinglist_be_printed)
-        print(self.chainlist)
-
+        print("The Chain is:")
+        for block in self.chainlist:
+            print(block)
+        #print(self.chainlist)
+        print("------------------------------------------------------------------------")
     def verify_clearance(self):
         print(self.self_best_hash_to_be_sent)
         print(self.hashinglist)
@@ -751,6 +792,8 @@ class Router(dict):
         self.hashcomparelist = []
         self.self_best_hash_to_be_sent = {}
         self.hashinglist_be_printed = {}
+
+        self.merkle_cache_list = []
 
         #self.best_hash_value_pair = {}
         #self.candidate_hash_values = []
