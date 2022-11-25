@@ -14,6 +14,7 @@
 # limitations under the License.
 import datetime
 from threading import Timer
+from MyTimer import single_timer
 
 from base64 import encode
 from http import server
@@ -432,11 +433,17 @@ class RouterController(ControllerBase):
                 for ids in all_router_objects.keys():
                     all_router_objects[ids].minute_hash_logging()
                 print(f"now {time.time()}")
-                loop()
-            def loop():
-                t = Timer(60, time_printer)
-                t.start()
-            loop()
+                loop(True)
+            def loop(auto):
+                if single_timer.timer is None:
+                    single_timer.timer = Timer(10, time_printer)
+                    single_timer.timer.start()
+                else:
+                    if auto is True:
+                        single_timer.timer = Timer(10, time_printer)
+                        single_timer.timer.start()
+
+            loop(False)
 
             if 'log' in json.loads(req.body.decode('utf-8')):
                 all_router_objects = self._ROUTER_LIST
